@@ -1,0 +1,40 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on: [zookeeper]
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: market
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build: .
+    command: uvicorn api:app --host 0.0.0.0 --port 8000
+    depends_on: [postgres]
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://app:app@postgres:5432/market
+      KAFKA_BOOTSTRAP: kafka:9092
+
+volumes:
+  pgdata:
